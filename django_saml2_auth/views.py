@@ -148,33 +148,45 @@ def _create_new_user(username, email, firstname, lastname):
 
 @csrf_exempt
 def acs(r):
+    print("### Inside dev acs ###")
     saml_client = _get_saml_client(get_current_domain(r))
     resp = r.POST.get('SAMLResponse', None)
+    print("### resp (below) ###")
+    print(resp)
     next_url = r.session.get('login_next_url', settings.SAML2_AUTH.get('DEFAULT_NEXT_URL', get_reverse('admin:index')))
 
+    print(next_url)
     if not resp:
         return HttpResponseRedirect(get_reverse([denied, 'denied', 'django_saml2_auth:denied']))
 
+    print("### Line 162 ###")
     authn_response = saml_client.parse_authn_request_response(
         resp, entity.BINDING_HTTP_POST)
     if authn_response is None:
         return HttpResponseRedirect(get_reverse([denied, 'denied', 'django_saml2_auth:denied']))
 
+    print("### Line 168 ###")
     user_identity = authn_response.get_identity()
+    print("### Line user_identity (below) ###")
+    print(user_identity)
     if user_identity is None:
         return HttpResponseRedirect(get_reverse([denied, 'denied', 'django_saml2_auth:denied']))
 
     if not user_identity:
+        print("### Line 176 ###")
         subject_name_id = settings.SAML2_AUTH.get('SUBJECT_NAMEID_MAPPING', 'email')
         subject_text = authn_response.get_subject().text
         user_query = { subject_name_id: subject_text }
     else:
+        print("### Line 181 ###")
         user_email = user_identity[settings.SAML2_AUTH.get('ATTRIBUTES_MAP', {}).get('email', 'Email')][0]
         user_name = user_identity[settings.SAML2_AUTH.get('ATTRIBUTES_MAP', {}).get('username', 'UserName')][0]
         user_first_name = user_identity[settings.SAML2_AUTH.get('ATTRIBUTES_MAP', {}).get('first_name', 'FirstName')][0]
         user_last_name = user_identity[settings.SAML2_AUTH.get('ATTRIBUTES_MAP', {}).get('last_name', 'LastName')][0]
         user_query = { 'username': user_name }
 
+
+    print("### Line 189 ###")
     target_user = None
     is_new_user = False
 
@@ -192,6 +204,8 @@ def acs(r):
         else:
             return HttpResponseRedirect(get_reverse([denied, 'denied', 'django_saml2_auth:denied']))
 
+
+    print("### Line 208 ###")
     r.session.flush()
 
     if target_user.is_active:
@@ -200,6 +214,8 @@ def acs(r):
     else:
         return HttpResponseRedirect(get_reverse([denied, 'denied', 'django_saml2_auth:denied']))
 
+
+    print("### Line 218 ###")
     if settings.SAML2_AUTH.get('USE_JWT') is True:
         # We use JWT auth send token to frontend
         jwt_token = jwt_encode(target_user)
@@ -210,6 +226,8 @@ def acs(r):
 
         return HttpResponseRedirect(frontend_url+query)
 
+
+    print("### Line 230 ###")
     if is_new_user:
         try:
             return render(r, 'django_saml2_auth/welcome.html', {'user': r.user})
@@ -217,6 +235,8 @@ def acs(r):
             return HttpResponseRedirect(next_url)
     else:
         return HttpResponseRedirect(next_url)
+
+    print("### Line 239 ###")
 
 
 def signin(r):
